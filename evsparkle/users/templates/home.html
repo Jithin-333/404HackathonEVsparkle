@@ -1,0 +1,305 @@
+{% extends "baseuser.html" %}
+{% load static %}
+{% block title %}Home - EV Sparkle{% endblock %}
+
+{% block extra_head %}
+  <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #0d0d0d;
+            color: #fff;
+        }
+
+        header {
+            background: linear-gradient(135deg, rgb(197, 114, 218), rgb(149, 238, 98));
+            text-align: center;
+            padding: 60px 20px;
+        }
+
+        header h1 {
+            font-size: 3rem;
+            margin-bottom: 10px;
+        }
+
+        header p {
+            font-size: 1.3rem;
+            margin-bottom: 20px;
+        }
+
+        .cta-btn {
+            background-color: #ffcc00;
+            color: #000;
+            padding: 15px 30px;
+            border-radius: 30px;
+            font-weight: bold;
+            text-decoration: none;
+            transition: 0.3s;
+        }
+
+        .cta-btn:hover {
+            background-color: #ffaa00;
+        }
+
+        section {
+            padding: 50px 15%;
+        }
+
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 25px;
+        }
+
+        .feature-card {
+            background: #1a1a1a;
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+            transition: 0.3s;
+        }
+
+        .feature-card:hover {
+            background: #262626;
+            transform: translateY(-5px);
+        }
+
+        .feature-card span {
+            font-size: 2rem;
+            display: block;
+            margin-bottom: 10px;
+        }
+
+        .steps {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            justify-content: center;
+        }
+
+        .step {
+            background: #1a1a1a;
+            padding: 20px;
+            border-radius: 12px;
+            flex: 1 1 250px;
+            text-align: center;
+        }
+
+        footer {
+            background: #111;
+            text-align: center;
+            padding: 20px;
+            color: #888;
+        }
+        tr{
+          color: #ffffffff;
+        }
+        .charge_button{
+          background: linear-gradient(135deg, #ddff00ff, #5eff00ff);
+        
+        }
+    </style>
+{% endblock %}
+
+{% block usercontent %}
+<h1>EV Sparkle — Find Best Charging Station</h1>
+
+<!-- Hero Section -->
+    <header>
+        <h1>⚡ Find the Nearest EV Charging Station Instantly</h1>
+        <p>Real-time location, availability, and smart range prediction — so you’re never left stranded.</p>
+        <a href="{% url 'ev_charging_map' %}" class="cta-btn">🔍 Find a Charging Station Now</a>
+    </header>
+
+    <!-- About Section -->
+    <section>
+        <h2>🔋 Smarter EV Charging at Your Fingertips</h2>
+        <p>
+            Our platform helps you quickly locate the nearest electric vehicle (EV) charging stations based on your current location and battery charge level.
+            Using advanced data analysis and real-time API integration, we ensure you know:
+        </p>
+        <ul>
+            <li>Which stations are closest</li>
+            <li>Whether they are currently available</li>
+            <li>If your remaining charge is enough to reach them</li>
+        </ul>
+    </section>
+
+    <!-- Features Section -->
+    <section>
+        <h2>✨ Why Choose Our EV Charging Finder?</h2>
+        <div class="features">
+            <div class="feature-card">
+                <span>📍</span>
+                <h3>Real-Time Location Tracking</h3>
+                <p>Automatically detect your position and show nearby charging points.</p>
+            </div>
+            <div class="feature-card">
+                <span>⚡</span>
+                <h3>Smart Battery Range Prediction</h3>
+                <p>Calculates whether your remaining charge is enough to reach the station.</p>
+            </div>
+            <div class="feature-card">
+                <span>📊</span>
+                <h3>Live Availability Data</h3>
+                <p>See if a station is busy before you get there.</p>
+            </div>
+            <div class="feature-card">
+                <span>🌱</span>
+                <h3>Eco-Friendly Route Planning</h3>
+                <p>Suggests the most energy-efficient path to your destination.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- How It Works Section -->
+    <section>
+        <h2>🚗 Charge Smarter in 3 Easy Steps</h2>
+        <div class="steps">
+            <div class="step">1️⃣ Allow Location Access – We detect your current position.</div>
+            <div class="step">2️⃣ Get Nearby Station List – With distance, availability, and route.</div>
+            <div class="step">3️⃣ Drive With Confidence – No wasted time, no empty battery surprises.</div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section style="text-align: center;">
+        <h2>⚡ Ready to Power Up?</h2>
+        <p>Whether you’re commuting, on a road trip, or exploring new cities, we’ve got your charging needs covered.</p>
+        <a href="#" class="cta-btn">📍 Find My Charging Station Now</a>
+    </section>
+
+
+<div class="mb-3">
+  <label>Battery Percentage Left (%)</label>
+  <input id="battery" type="number" class="form-control" min="0" max="100" value="50">
+</div>
+
+<div class="mb-3">
+  <label>Vehicle Range at Full Battery (km)</label>
+  <input id="fullRange" type="number" class="form-control" min="1" value="200">
+</div>
+
+<button id="findBtn" class="btn charge_button">Find Best Charging Station</button>
+
+<!-- Progress bar -->
+<div id="progressContainer" style="margin-top: 16px; display: none;">
+  <div class="progress">
+    <div id="progressBar" class="progress-bar progress-bar-striped progress-bar-animated" 
+         role="progressbar" style="width: 0%">0%</div>
+  </div>
+</div>
+
+<hr>
+
+<div id="output" style="margin-top:16px;"></div>
+
+<script>
+    function getCSRFToken() {
+    return document.querySelector('[name=csrfmiddlewaretoken]') ? document.querySelector('[name=csrfmiddlewaretoken]').value : '';
+  }
+
+  function simulateProgress(callback) {
+    let progress = 0;
+    const bar = document.getElementById('progressBar');
+    const timer = setInterval(() => {
+      progress += Math.floor(Math.random() * 10) + 5; // increase by 5–15%
+      if (progress >= 100) {
+        progress = 100;
+        clearInterval(timer);
+        if (callback) callback();
+      }
+      bar.style.width = progress + "%";
+      bar.textContent = progress + "%";
+    }, 300);
+  }
+
+  document.getElementById('findBtn').addEventListener('click', function() {
+    if (!navigator.geolocation) {
+      alert('Geolocation not supported by this browser.');
+      return;
+    }
+    const battery = parseFloat(document.getElementById('battery').value);
+    const fullRange = parseFloat(document.getElementById('fullRange').value);
+
+    if (isNaN(battery) || isNaN(fullRange) || battery < 0 || battery > 100) {
+      alert('Enter valid battery % and full range.');
+      return;
+    }
+
+    const output = document.getElementById('output');
+    output.innerHTML = '';
+
+    // Show progress bar
+    document.getElementById('progressContainer').style.display = 'block';
+    document.getElementById('progressBar').style.width = '0%';
+    document.getElementById('progressBar').textContent = '0%';
+
+    simulateProgress();
+
+    navigator.geolocation.getCurrentPosition(function(pos) {
+      const payload = {
+        lat: pos.coords.latitude,
+        lon: pos.coords.longitude,
+        battery: battery,
+        fullRange: fullRange
+      };
+
+      fetch("{% url 'predict_best_station_api' %}", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": getCSRFToken()
+        },
+        body: JSON.stringify(payload)
+      })
+      .then(res => {
+        if (!res.ok) throw new Error('Server error');
+        return res.json();
+      })
+      .then(data => {
+        // Hide progress bar when done
+        document.getElementById('progressBar').style.width = '100%';
+        document.getElementById('progressBar').textContent = '100%';
+        setTimeout(() => {
+          document.getElementById('progressContainer').style.display = 'none';
+        }, 500);
+
+        if (data.error) {
+          output.innerHTML = `<div class="alert alert-danger">${data.error}</div>`;
+          return;
+        }
+        if (!data.stations || data.stations.length === 0) {
+          output.innerHTML = `<div class="alert alert-warning">No stations found within range.</div>`;
+          return;
+        }
+
+        let html = `<h5>Best Station: ${data.best_station.name} — ETA ${data.best_station.predicted_time_min ?? data.best_station.route_time_min} mins</h5>`;
+        html += '<table class="table table-sm"><thead><tr><th>Name</th><th>Distance (km)</th><th>Route Time (mins)</th><th>Predicted Time (mins)</th></tr></thead><tbody>';
+        data.stations.forEach(s => {
+          html += `<tr>
+                    <td>${s.name}</td>
+                    <td>${s.distance_km}</td>
+                    <td>${s.route_time_min ?? 'N/A'}</td>
+                    <td>${s.predicted_time_min ?? s.route_time_min ?? 'N/A'}</td>
+                  </tr>`;
+        });
+        html += '</tbody></table>';
+        output.innerHTML = html;
+      })
+      .catch(err => {
+        console.error(err);
+        document.getElementById('progressContainer').style.display = 'none';
+        output.innerHTML = `<div class="alert alert-danger">Error: ${err.message}</div>`;
+      });
+
+    }, function(err) {
+      document.getElementById('progressContainer').style.display = 'none';
+      output.innerHTML = `<div class="alert alert-warning">Geolocation error: ${err.message}</div>`;
+    }, { enableHighAccuracy: true, timeout: 15000 });
+  });
+
+
+</script>
+{% endblock %}

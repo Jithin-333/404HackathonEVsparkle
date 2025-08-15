@@ -1,0 +1,370 @@
+    <!-- templates/ev_map.html -->
+    {% load static %}
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>{% block title %}EV Charging Stations{% endblock %}</title>
+        <link rel="stylesheet" href={% static 'css/user_style.css' %}>
+        
+        <!-- Leaflet CSS -->
+        <link
+            rel="stylesheet"
+            href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+            integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+            crossorigin=""
+        />
+
+        
+        <!-- Bootstrap CSS for better styling (optional) -->
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+        
+        
+    </head>
+    <body>
+        <div class="container-fluid">
+            <div class="row">
+                <div class="col-12">
+                    <h1 class="text-center mb-4 mt-3 text-success">
+                        <i class="fas fa-charging-station me-2"></i>
+                        Nearby EV Charging Stations
+                    </h1>
+                    
+                    <div class="map-container">
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <p class="lead">Find electric vehicle charging stations near your location</p>
+                            </div>
+                            <div class="col-md-6 text-end">
+                                <button id="locateBtn" class="btn btn-locate">
+                                    <i class="fas fa-map-marker-alt me-2"></i>
+                                    Find Nearby Stations
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div id="loading" class="loading">
+                            <div class="spinner-border" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                            <p class="mt-2">Searching for charging stations...</p>
+                        </div>
+                        
+                        <div id="loading" class="loading">
+                            <div class="spinner-border" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                            <p class="mt-2">Searching for charging stations...</p>
+                        </div>
+                        
+                        <div id="map"></div>
+                        
+                        <div id="station-count" class="station-info" style="display: none;">
+                            <h5>Station Information</h5>
+                            <p id="station-text">Found <span id="count">0</span> charging stations nearby</p>
+                        </div>
+                        
+                        <div id="station-count" class="station-info" style="display: none;">
+                            <h5>Station Information</h5>
+                            <p id="station-text">Found <span id="count">0</span> charging stations nearby</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="station-list" class="station-info mt-4" style="display: none;">
+            <h5>Nearby Stations</h5>
+            <table class="table table-striped table-bordered">
+                <thead class="table-success">
+                    <tr>
+                        <th>Name</th>
+                        <th>Status</th>
+                        <th>Charge Time (mins)</th>
+                        <th>Distance (km)</th>
+                    </tr>
+                </thead>
+                <tbody id="station-list-body"></tbody>
+            </table>
+        </div>
+         <!-- Common Footer -->
+    <footer>
+        &copy; {% now "Y" %} EV Sparkle. All rights reserved.
+    </footer>
+
+
+        <!-- Leaflet JS -->
+        <script
+            src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+            integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+            crossorigin=""
+        ></script>
+        
+    
+        
+        <!-- Font Awesome for icons -->
+        <script src="https://kit.fontawesome.com/your-kit-id.js" crossorigin="anonymous"></script>
+        
+        <!-- Bootstrap JS -->
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+        <script>
+            // Initialize map variable globally
+            let map;
+            let userMarker;
+            let stationMarkers = [];
+
+            // Custom icons for different markers
+            const userIcon = L.icon({
+                iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+                shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+                iconSize: [25, 41],
+                iconAnchor: [12, 41],
+                popupAnchor: [1, -34],
+                shadowSize: [41, 41]
+            });
+
+            const chargingIcon = L.icon({
+                iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
+                shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+                iconSize: [25, 41],
+                iconAnchor: [12, 41],
+                popupAnchor: [1, -34],
+                shadowSize: [41, 41]
+            });
+
+            function initMap(lat, lon) {
+                if (map) {
+                    map.remove();
+                }
+                
+                map = L.map('map').setView([lat, lon], 14);
+
+                // Add OpenStreetMap tile layer
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    maxZoom: 19,
+                    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                }).addTo(map);
+
+                // Add marker for user location with custom icon
+                userMarker = L.marker([lat, lon], {icon: userIcon})
+                    .addTo(map)
+                    .bindPopup('<div class="text-center"><strong>📍 Your Location</strong><br><small>Latitude: ' + lat.toFixed(4) + '<br>Longitude: ' + lon.toFixed(4) + '</small></div>')
+                    .openPopup();
+
+                // Show loading indicator
+                document.getElementById('loading').style.display = 'block';
+
+                // Fetch and add EV charging stations around the location
+                fetchChargingStations(lat, lon);
+            }
+
+            async function fetchChargingStations(lat, lon) {
+                stationMarkers.forEach(marker => map.removeLayer(marker));
+                stationMarkers = [];
+
+                const TOMTOM_API_KEY = "hw2jVlrYLFBBYFhrPgLIWelmNV9N0ZUq";
+                const radius = 30000; // 30 km
+
+                document.getElementById('loading').style.display = 'block';
+                const listBody = document.getElementById('station-list-body');
+                listBody.innerHTML = '';
+
+                try {
+                    // 1. Get nearby charging stations
+                    const nearbyUrl = `https://api.tomtom.com/search/2/nearbySearch/.json?lat=${lat}&lon=${lon}&radius=${radius}&categorySet=7309&key=${TOMTOM_API_KEY}`;
+                    const nearbyRes = await fetch(nearbyUrl);
+                    const nearbyData = await nearbyRes.json();
+
+                    if (!nearbyData.results || nearbyData.results.length === 0) {
+                        showAlert("No nearby EV charging stations found.", "warning");
+                        updateStationCount(0);
+                        document.getElementById('station-list').style.display = 'none';
+                        return;
+                    }
+
+                    let stationCount = 0;
+
+                    for (let station of nearbyData.results) {
+                        const stationLat = station.position.lat;
+                        const stationLon = station.position.lon;
+                        const name = station.poi?.name || "EV Charging Station";
+                        const distance = calculateDistance(lat, lon, stationLat, stationLon);
+
+                        // 2. Get availability data
+                        let statusText = "Unknown";
+                        let chargeTime = "N/A";
+
+                        if (station.chargingAvailability?.id) {
+                            const availabilityUrl = `https://api.tomtom.com/search/2/chargingAvailability.json?chargingAvailability=${station.chargingAvailability.id}&key=${TOMTOM_API_KEY}`;
+                            const availabilityRes = await fetch(availabilityUrl);
+                            const availabilityData = await availabilityRes.json();
+
+                            if (availabilityData && availabilityData.connectors) {
+                                const totalAvailable = availabilityData.connectors.reduce((sum, c) => sum + (c.availability?.available ?? 0), 0);
+                                statusText = totalAvailable > 0 ? "Available" : "Occupied";
+                                chargeTime = availabilityData.connectors[0]?.chargingTimeInMinutes ?? "N/A";
+                            }
+                        }
+
+                        // Add marker
+                        const marker = L.marker([stationLat, stationLon], { icon: chargingIcon })
+                            .addTo(map)
+                            .bindPopup(`
+                                <div style="min-width: 200px;">
+                                    <h6 class="text-success mb-2">🔌 ${name}</h6>
+                                    <strong>Status:</strong> ${statusText}<br>
+                                    <strong>Charge Time:</strong> ${chargeTime} mins<br>
+                                    <strong>Distance:</strong> ${distance.toFixed(2)} km
+                                </div>
+                            `);
+                        stationMarkers.push(marker);
+
+                        // Add row to table
+                        listBody.insertAdjacentHTML('beforeend', `
+                            <tr>
+                                <td>${name}</td>
+                                <td>${statusText}</td>
+                                <td>${chargeTime}</td>
+                                <td>${distance.toFixed(2)}</td>
+                            </tr>
+                        `);
+
+                        stationCount++;
+                    }
+
+                    updateStationCount(stationCount);
+                    document.getElementById('station-list').style.display = 'block';
+                    showAlert(`Found ${stationCount} charging stations nearby!`, "success");
+
+                } catch (error) {
+                    console.error(error);
+                    showAlert("Failed to load charging stations data.", "danger");
+                } finally {
+                    document.getElementById('loading').style.display = 'none';
+                }
+                
+            }
+
+
+            function calculateDistance(lat1, lon1, lat2, lon2) {
+                const R = 6371; // Earth's radius in kilometers
+                const dLat = (lat2 - lat1) * Math.PI / 180;
+                const dLon = (lon2 - lon1) * Math.PI / 180;
+                const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                        Math.sin(dLon/2) * Math.sin(dLon/2);
+                const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+                return R * c;
+            }
+
+            function updateStationCount(count) {
+                document.getElementById('count').textContent = count;
+                document.getElementById('station-count').style.display = count > 0 ? 'block' : 'none';
+            }
+
+            function showAlert(message, type) {
+                const alertDiv = document.createElement('div');
+                alertDiv.className = `alert alert-${type} alert-custom alert-dismissible fade show`;
+                alertDiv.innerHTML = `
+                    ${message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                `;
+                
+                const container = document.querySelector('.map-container');
+                container.insertBefore(alertDiv, document.getElementById('map'));
+                
+                // Auto-dismiss after 5 seconds
+                setTimeout(() => {
+                    if (alertDiv.parentNode) {
+                        alertDiv.remove();
+                    }
+                }, 5000);
+            }
+
+            function getDirections(lat, lon) {
+                // Open Google Maps with directions
+                const url = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}&travelmode=driving`;
+                window.open(url, '_blank');
+            }
+
+            function requestUserLocation() {
+                // Check if geolocation is supported
+                if (!navigator.geolocation) {
+                    showAlert("Geolocation is not supported by your browser.", 'danger');
+                    // Fallback to a default location (you can customize this)
+                    initMap(28.6139, 77.2090); // New Delhi coordinates
+                    return;
+                }
+
+                // Update button text to show loading
+                const locateBtn = document.getElementById('locateBtn');
+                const originalText = locateBtn.innerHTML;
+                locateBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Getting Location...';
+                locateBtn.disabled = true;
+
+                const options = {
+                    enableHighAccuracy: true,
+                    timeout: 15000, // 15 seconds
+                    maximumAge: 300000 // 5 minutes
+                };
+
+                function success(position) {
+                    const latitude = position.coords.latitude;
+                    const longitude = position.coords.longitude;
+                    
+                    // Reset button
+                    locateBtn.innerHTML = originalText;
+                    locateBtn.disabled = false;
+                    
+                    // Show success message
+                    showAlert(`Location found! Searching for charging stations near you.`, 'success');
+                    
+                    // Initialize map with user's location
+                    initMap(latitude, longitude);
+                }
+
+                function error(err) {
+                    // Reset button
+                    locateBtn.innerHTML = originalText;
+                    locateBtn.disabled = false;
+                    
+                    let message = '';
+                    switch(err.code) {
+                        case err.PERMISSION_DENIED:
+                            message = "Location access denied. Please allow location access and try again.";
+                            break;
+                        case err.POSITION_UNAVAILABLE:
+                            message = "Location information is unavailable.";
+                            break;
+                        case err.TIMEOUT:
+                            message = "Location request timed out. Please try again.";
+                            break;
+                        default:
+                            message = "An unknown error occurred while retrieving location.";
+                            break;
+                    }
+                    
+                    showAlert(message, 'warning');
+                    
+                    // Fallback: show map centered on a default location
+                    // You should customize these coordinates for your region
+                    initMap(28.6139, 77.2090); // New Delhi, India
+                }
+
+                // Request location permission and get coordinates
+                navigator.geolocation.getCurrentPosition(success, error, options);
+            }
+
+            // Event listeners
+            document.getElementById('locateBtn').addEventListener('click', requestUserLocation);
+
+            // Initialize map on page load with default location (but don't auto-request location)
+            window.addEventListener('load', function() {
+                // Show a default location first
+                initMap(28.6139, 77.2090); // Default to New Delhi
+            });
+        </script>
+    </body>
+    </html>

@@ -1,0 +1,66 @@
+
+body{
+    background-color: rgb(21, 21, 21) !important;
+}
+#map {
+                height: 500px;
+                width: 100%;
+                border-radius: 12px;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                border: 2px solid #d55757;
+            }
+            
+            .map-container {
+                background: #212121;
+                padding: 2rem;
+                border-radius: 12px;
+                margin: 1rem 0;
+            }
+            
+            .station-info {
+                background: rgb(0, 0, 0);
+                color: white;
+                padding: 1rem;
+                border-radius: 8px;
+                margin: 1rem 0;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            }
+            
+            .btn-locate {
+                background: linear-gradient(45deg, #28a745, #20c997);
+                border: none;
+                padding: 12px 24px;
+                border-radius: 8px;
+                color: white;
+                font-weight: 600;
+                transition: all 0.3s ease;
+            }
+            
+            .btn-locate:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+            }
+            
+            .loading {
+                display: none;
+                text-align: center;
+                padding: 1rem;
+            }
+            
+            .spinner-border {
+                color: #28a745;
+            }
+            
+            .alert-custom {
+                border-radius: 8px;
+                border: none;
+            }
+#station-list{
+    background-color: #111111;
+}
+footer{
+    display: block;
+    text-align: center;
+    color: rgb(222, 222, 222);
+    margin-bottom: 30px;
+}
